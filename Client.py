@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 
+nom = ""
+
 def demanar_dades():
-    print("hola")
+    global nom
+    print("Benvingut al servei de xats")
+    nom = input("Introdueix el teu nom: ")
 
 
 def mostrar_menu():
-    print("Benvingut al sevei de xats, *(nom)*")
+    print("Benvingut al servei de xats, " + nom)
     print("1. Connecta el xat")
     print("2. Subscriu-te al xat de grup")
     print("3. Descobreix xats")
@@ -36,7 +40,7 @@ def main():
         opcio = input("Elegeix una opció: ")
 
         if opcio == "1":
-            print("Has elegit connecta el xat")
+            print("Has elegit Connecta el xat")
             opcio1()
         elif opcio == "2":
             print("Has elegit Subscriu-te al xat de grup")
