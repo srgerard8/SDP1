@@ -1,12 +1,21 @@
 #!/usr/bin/env python3
+import multiprocessing
+import threading
+
+import grpc
+
+import chatservice_pb2
+import chatservice_pb2_grpc # Importa tu archivo .proto generado
 
 nom = ""
+channel = grpc.insecure_channel('localhost:50051')
+stub = chatservice_pb2_grpc.ChatServiceStub(channel)
 
 def demanar_dades():
     global nom
     print("Benvingut al servei de xats")
     nom = input("Introdueix el teu nom: ")
-
+    stub.Connect(chatservice_pb2.ConnectRequest(username=nom))
 
 def mostrar_menu():
     print("Benvingut al servei de xats, " + nom)
@@ -19,7 +28,10 @@ def mostrar_menu():
 
 def opcio1():
     print("1")
-
+    message = input("Introdueix el missatge: ")
+    receiver = input("Enter receiver's username  ")
+    response = stub.SendMessage(chatservice_pb2.MessageRequest(sender=nom, receiver=receiver, message=message))
+    print(response.message)
 
 def opcio2():
     print("2")
@@ -60,3 +72,14 @@ def main():
 
 if __name__ == "__main__":
     main()
+    # Crea los procesos para cada cliente
+#    proceso_cliente1 = threading.Thread(target=main())
+#    proceso_cliente2 = threading.Thread(target=main())
+
+    # Inicia los procesos
+#    proceso_cliente1.start()
+#    proceso_cliente2.start()
+
+    # Espera a que los procesos terminen
+#    proceso_cliente1.join()
+#    proceso_cliente2.join()

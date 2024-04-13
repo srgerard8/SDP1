@@ -7,23 +7,28 @@ from google.protobuf import descriptor as _descriptor
 from google.protobuf import descriptor_pool as _descriptor_pool
 from google.protobuf import symbol_database as _symbol_database
 from google.protobuf.internal import builder as _builder
-
 # @@protoc_insertion_point(imports)
 
 _sym_db = _symbol_database.Default()
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(
-    b'\n\x11\x63hatservice.proto\x12\x04\x63hat\"/\n\x0eMessageRequest\x12\x0c\n\x04\x66rom\x18\x01 \x01(\t\x12\x0f\n\x07message\x18\x02 \x01(\t\"\"\n\x0fMessageResponse\x12\x0f\n\x07message\x18\x01 \x01(\t2K\n\x0b\x43hatService\x12<\n\x0bSendMessage\x12\x14.chat.MessageRequest\x1a\x15.chat.MessageResponse\"\x00\x62\x06proto3')
+
+
+
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x11\x63hatservice.proto\x12\x04\x63hat\"\"\n\x0e\x43onnectRequest\x12\x10\n\x08username\x18\x01 \x01(\t\"\"\n\x0f\x43onnectResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\"C\n\x0eMessageRequest\x12\x0e\n\x06sender\x18\x01 \x01(\t\x12\x10\n\x08receiver\x18\x02 \x01(\t\x12\x0f\n\x07message\x18\x03 \x01(\t\"D\n\x0fMessageResponse\x12\x0e\n\x06sender\x18\x01 \x01(\t\x12\x10\n\x08receiver\x18\x02 \x01(\t\x12\x0f\n\x07message\x18\x03 \x01(\t2\xc8\x01\n\x0b\x43hatService\x12<\n\x0bSendMessage\x12\x14.chat.MessageRequest\x1a\x15.chat.MessageResponse\"\x00\x12\x41\n\x0eReceiveMessage\x12\x14.chat.MessageRequest\x1a\x15.chat.MessageResponse\"\x00\x30\x01\x12\x38\n\x07\x43onnect\x12\x14.chat.ConnectRequest\x1a\x15.chat.ConnectResponse\"\x00\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'chatservice_pb2', _globals)
 if _descriptor._USE_C_DESCRIPTORS == False:
-    DESCRIPTOR._options = None
-    _globals['_MESSAGEREQUEST']._serialized_start = 27
-    _globals['_MESSAGEREQUEST']._serialized_end = 74
-    _globals['_MESSAGERESPONSE']._serialized_start = 76
-    _globals['_MESSAGERESPONSE']._serialized_end = 110
-    _globals['_CHATSERVICE']._serialized_start = 112
-    _globals['_CHATSERVICE']._serialized_end = 187
+  DESCRIPTOR._options = None
+  _globals['_CONNECTREQUEST']._serialized_start=27
+  _globals['_CONNECTREQUEST']._serialized_end=61
+  _globals['_CONNECTRESPONSE']._serialized_start=63
+  _globals['_CONNECTRESPONSE']._serialized_end=97
+  _globals['_MESSAGEREQUEST']._serialized_start=99
+  _globals['_MESSAGEREQUEST']._serialized_end=166
+  _globals['_MESSAGERESPONSE']._serialized_start=168
+  _globals['_MESSAGERESPONSE']._serialized_end=236
+  _globals['_CHATSERVICE']._serialized_start=239
+  _globals['_CHATSERVICE']._serialized_end=439
 # @@protoc_insertion_point(module_scope)

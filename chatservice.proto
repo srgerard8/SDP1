@@ -4,13 +4,26 @@ package chat;
 
 service ChatService {
     rpc SendMessage(MessageRequest) returns (MessageResponse) {}
+    rpc ReceiveMessage(MessageRequest) returns (stream MessageResponse) {}
+    rpc Connect(ConnectRequest) returns (ConnectResponse) {}
+}
+
+message ConnectRequest {
+    string username = 1;
+}
+
+message ConnectResponse {
+    string message = 1;
 }
 
 message MessageRequest {
-    string from = 1;
-    string message = 2;
+    string sender = 1;
+    string receiver = 2;
+    string message = 3;
 }
 
 message MessageResponse {
-    string message = 1;
+    string sender = 1;
+    string receiver = 2;
+    string message = 3;
 }
