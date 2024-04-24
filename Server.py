@@ -4,36 +4,37 @@ import chatservice_pb2
 import chatservice_pb2_grpc
 from collections import defaultdict
 
-
 class ChatService(chatservice_pb2_grpc.ChatServiceServicer):
     def __init__(self):
-        self.clients = defaultdict(list)  # Almacena las conexiones de los clientes
+        self.clients = defaultdict(list)
 
     def SendMessage(self, request, context):
-        sender = context.peer()  # Obtiene la dirección del remitente
+        sender = context.peer()
         receiver = request.receiver
         message = request.message
-        print(f"Mensaje enviado de {sender} a {receiver}: {message}")
+        print(f"Missatge enviat de {sender} a {receiver}: {message}")
 
-        # Encuentra al cliente destinatario y envía el mensaje
         if receiver in self.clients:
             for client in self.clients[receiver]:
-                client.SendMessage(chatservice_pb2.MessageRequest(sender=sender, receiver=receiver, message=message))
-            return chatservice_pb2.MessageResponse(message="Mensaje enviado al destinatario")
+                channel = grpc.insecure_channel(client.peer())
+                client_stub = chatservice_pb2_grpc.ChatServiceStub(channel)
+                client_stub.ReceiveMessage(chatservice_pb2.MessageRequest(sender=sender, receiver=receiver, message=message))
+                #client.SendMessage(chatservice_pb2.MessageRequest(sender=sender, receiver=receiver, message=message))
+            return chatservice_pb2.MessageResponse(message="Missatge enviat al destinatari")
         else:
-            return chatservice_pb2.MessageResponse(message=f"No se pudo entregar el mensaje a {receiver}")
+            return chatservice_pb2.MessageResponse(message=f"No s'ha pogut entregar el missatge {receiver}")
 
     def ReceiveMessage(self, request, context):
         sender = request.sender
         message = request.message
-        print(f"Mensaje recibido de {sender}: {message}")
-        return chatservice_pb2.MessageResponse(message="Mensaje recibido")
+        print(f"Missatge rebut de {sender}: {message}")
+        return chatservice_pb2.MessageResponse(message="Missatge rebut")
 
     def Connect(self, request, context):
         username = request.username
         self.clients[username].append(context)
-        print(f"Cliente {username} conectado")
-        return chatservice_pb2.ConnectResponse(message=f"Bienvenido al servidor, {username}")
+        print(f"Client {username} conectat al servidor")
+        return chatservice_pb2.ConnectResponse(message=f"Bienvengut al servidor, {username}")
 
 
 def serve():

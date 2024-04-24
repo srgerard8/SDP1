@@ -11,6 +11,9 @@ nom = ""
 channel = grpc.insecure_channel('localhost:50051')
 stub = chatservice_pb2_grpc.ChatServiceStub(channel)
 
+def getStub():
+    return stub
+
 def demanar_dades():
     global nom
     print("Benvingut al servei de xats")
@@ -23,14 +26,18 @@ def mostrar_menu():
     print("2. Subscriu-te al xat de grup")
     print("3. Descobreix xats")
     print("4. Accedeix al canal d'insults")
-    print("5. Sortir")
+    print("5. Mostrar missatges rebuts")
+    print("6. Sortir")
+
 
 
 def opcio1():
     print("1")
+    global nom
     message = input("Introdueix el missatge: ")
-    receiver = input("Enter receiver's username  ")
-    response = stub.SendMessage(chatservice_pb2.MessageRequest(sender=nom, receiver=receiver, message=message))
+    receiver = input("A qui li vols enviar el missatge?  ")
+    nom2 = nom
+    response = stub.SendMessage(chatservice_pb2.MessageRequest(sender=nom2, receiver=receiver, message=message))
     print(response.message)
 
 def opcio2():
@@ -44,6 +51,11 @@ def opcio3():
 def opcio4():
     print("4")
 
+def opcio5():
+    print("5")
+    receptor = input("Introdueix de qui vols llegir els missatges: ")
+    response = stub.ReceiveMessage(chatservice_pb2.MessageRequest(sender=nom, receiver=receptor, message="ola"))
+    print(response.message)
 
 def main():
     demanar_dades()
@@ -64,6 +76,9 @@ def main():
             print("Has elegit Accedeix al canal d'insults")
             opcio4()
         elif opcio == "5":
+            print("Has elegit Mostrar missatges rebuts")
+            opcio5()
+        elif opcio == "6":
             print("Sortint...")
             break
         else:
