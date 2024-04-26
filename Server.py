@@ -42,7 +42,7 @@ def serve():
     chatservice_pb2_grpc.add_ChatServiceServicer_to_server(ChatService(), server)
     server.add_insecure_port('[::]:50051')
     server.start()
-    print("Servidor gRPC en ejecución en el puerto 50051")
+    print("Servidor gRPC en execució al port 50051")
     server.wait_for_termination()
 
 
