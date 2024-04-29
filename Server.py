@@ -16,15 +16,12 @@ class ChatService(chatservice_pb2_grpc.ChatServiceServicer):
         print(f"Missatge enviat de {username} a {receiver}: {message}")
 
         if receiver in self.clients:
-            channel = grpc.insecure_channel(sender)
-            client_stub = chatservice_pb2_grpc.ChatServiceStub(channel)
-            client_stub.SendMessage(chatservice_pb2.MessageRequest(sender=username, receiver=receiver, message=message))
+            for client in self.clients[receiver]:
+                ipport = client.peer()+":50051"
+                channel = grpc.insecure_channel("localhost:50051")
+                client_stub = chatservice_pb2_grpc.ChatServiceStub(channel)
+                client_stub.SendMessage(chatservice_pb2.MessageRequest(sender=username, receiver=receiver, message=message))
             return chatservice_pb2.MessageResponse(message="Missatge enviat al destinatari")
-            #for client in self.clients[receiver]:
-                #channel = grpc.insecure_channel(sender)
-                #client_stub = chatservice_pb2_grpc.ChatServiceStub(channel)
-                #client_stub.SendMessage(chatservice_pb2.MessageRequest(sender=username, receiver=receiver, message=message))
-            #return chatservice_pb2.MessageResponse(message="Missatge enviat al destinatari")
         else:
             return chatservice_pb2.MessageResponse(message=f"No s'ha pogut entregar el missatge {receiver}")
 
