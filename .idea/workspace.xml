@@ -6,6 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="078d810e-b8ad-41d1-b877-ee3da9e99c8e" name="Changes" comment="canvis no útils gerard">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Client.py" beforeDir="false" afterPath="$PROJECT_DIR$/Client.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Server.py" beforeDir="false" afterPath="$PROJECT_DIR$/Server.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -46,9 +47,9 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "Python.Client.executor": "Debug",
+    "Python.Client.executor": "Run",
     "Python.Client2.executor": "Run",
-    "Python.Server.executor": "Debug",
+    "Python.Server.executor": "Run",
     "Python.Server2.executor": "Run",
     "Python.hola.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
@@ -234,7 +235,15 @@
       <option name="project" value="LOCAL" />
       <updated>1713959730600</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="canvis no útils gerard">
+      <option name="closed" value="true" />
+      <created>1714145757547</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1714145757547</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -256,15 +265,21 @@
     <MESSAGE value="commit final 1r dia gerard" />
     <MESSAGE value="commit final 2n dia gerard" />
     <MESSAGE value="commit final 3r dia gerard" />
-    <option name="LAST_COMMIT_MESSAGE" value="commit final 3r dia gerard" />
+    <MESSAGE value="canvis no útils gerard" />
+    <option name="LAST_COMMIT_MESSAGE" value="canvis no útils gerard" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/Server.py</url>
-          <line>27</line>
-          <option name="timeStamp" value="7" />
+          <line>20</line>
+          <option name="timeStamp" value="11" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/Client.py</url>
+          <line>105</line>
+          <option name="timeStamp" value="12" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
