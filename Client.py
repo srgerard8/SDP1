@@ -1,87 +1,72 @@
-#!/usr/bin/env python3
-import multiprocessing
-import threading
-
 import grpc
-
+from concurrent import futures
 import chatservice_pb2
-import chatservice_pb2_grpc  # Importa tu archivo .proto generado
+import chatservice_pb2_grpc
 
-nom = ""
+class ChatService(chatservice_pb2_grpc.ChatServiceServicer):
+    def __init__(self, client):
+        self.client = client
+
+    def SendMessage(self, request, context):
+        sender = request.sender
+        message = request.message
+        print(f"Missatge rebut de {sender}: {message}")
+        return chatservice_pb2.MessageResponse(message="Missatge enviat correctament")
 
 
 class Client:
 
-    def __init__(self, nom2):
-        self.nom = nom2
-        self.channel = grpc.insecure_channel('localhost:50051')
+    def __init__(self, username, port):
+        self.username = username
+        self.port = port
+        self.server = None
+        self.channel = grpc.insecure_channel('localhost:50052')
         self.stub = chatservice_pb2_grpc.ChatServiceStub(self.channel)
 
-    def receive_messages(self, request):
-        try:
-            for response in self.stub.ReceiveMessage(
-                    chatservice_pb2.MessageRequest(request)):
-                print(f"Mensaje recibido: De {response.sender}: {response.message}")
-        except grpc.RpcError as e:
-            print(f"Error al recibir mensajes: {e}")
-
-    def getStub(self):
-        return self.stub
-
-    def demanar_dades(self):
-        global nom
-        print("Benvingut al servei de xats")
-        nom = input("Introdueix el teu nom: ")
-        self.stub.Connect(chatservice_pb2.ConnectRequest(username=nom))
-
     def mostrar_menu(self):
-        print("Benvingut al servei de xats, " + nom)
-        print("1. Connecta el xat")
+        print("Benvingut al servei de xats, " + self.username)
+        print("1. Connecta al xat")
         print("2. Subscriu-te al xat de grup")
         print("3. Descobreix xats")
         print("4. Accedeix al canal d'insults")
-        print("5. Mostrar missatges rebuts")
-        print("6. Sortir")
+        print("5. Sortir")
 
-    def opcio1(self):
-        print("1")
-        global nom
-        message = input("Introdueix el missatge: ")
-        receiver = input("A qui li vols enviar el missatge?  ")
-        nom2 = nom
-        response = self.stub.SendMessage(
-            chatservice_pb2.MessageRequest(sender=nom2, receiver=receiver, message=message))
-        #print(response.message)
+    def register(self):
+        address = f'localhost:{self.port}'
+        self.stub.RegisterClient(chatservice_pb2.ClientInfo(username=self.username, address=address))
 
-    def opcio2(self):
-        print("2")
+    def get_clients(self):
+        response = self.stub.GetClients(chatservice_pb2.Empty())
+        return {client.username: client.address for client in response.clients}
 
-    def opcio3(self):
-        print("3")
+    def send_message(self, receiver, message):
+        clients = self.get_clients()
+        if receiver in clients:
+            receiver_address = clients[receiver]
+            channel = grpc.insecure_channel(receiver_address)
+            stub = chatservice_pb2_grpc.ChatServiceStub(channel)
+            response = stub.SendMessage(chatservice_pb2.MessageRequest(sender=self.username, receiver=receiver, message=message))
+            print(f"{response.message}")
+        else:
+            print(f"Client {receiver} no trobat")
 
-    def opcio4(self):
-        print("4")
-
-    def opcio5(self, client):
-        print("5")
-        receive_thread = threading.Thread(target=client.receive_messages, daemon=True)
-        receive_thread.start()
-
-        while True:
-            receiver = input("Introduce el destinatario del mensaje: ")
-            message = input("Introduce el mensaje: ")
-            client.send_message(receiver, message)
+    def serve(self):
+        server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+        chatservice_pb2_grpc.add_ChatServiceServicer_to_server(ChatService(self), server)
+        server.add_insecure_port(f'[::]:{self.port}')
+        server.start()
+        self.server = server
+        print(f"Client servidor gRPC en execució al port {self.port}")
 
     def start(self):
-        global nom
-        self.demanar_dades()
-
+        self.register()
+        self.serve()
         while True:
             self.mostrar_menu()
             opcio = input("Elegeix una opció: ")
 
             if opcio == "1":
-                print("Has elegit Connecta el xat")
+                print("Has elegit Connecta al xat")
                 self.opcio1()
             elif opcio == "2":
                 print("Has elegit Subscriu-te al xat de grup")
@@ -93,26 +78,36 @@ class Client:
                 print("Has elegit Accedeix al canal d'insults")
                 self.opcio4()
             elif opcio == "5":
-                print("Has elegit Mostrar missatges rebuts")
-                self.opcio5(client)
-            elif opcio == "6":
                 print("Sortint...")
                 break
             else:
                 print("Opció no valida. Si us plau, elegeix una opció")
 
+    def opcio1(self):
+        sortir = False
+        receiver = input("Introdueix el destinatari amb qui et vols connectar el xat: ")
+        print("A continuació, et connectaràs el servei de xat privat. Si vols sortir, introdueix 'sortir'")
+        while sortir == False:
+            message = input("")
+            if message == "sortir":
+                print("Has sortit del xat")
+                sortir = True
+            else:
+                self.send_message(receiver, message)
+
+    def opcio2(self):
+        print("2")
+
+    def opcio3(self):
+        print("3")
+
+    def opcio4(self):
+        print("4")
+
 
 if __name__ == "__main__":
-    client = Client(nom)
+    username = input("Introdueix el teu nom: ")
+    port = input("Introdueix el port en que vols executar aquest client: ")
+    client = Client(username, port)
     client.start()
-    # Crea los procesos para cada cliente
-#    proceso_cliente1 = threading.Thread(target=main())
-#    proceso_cliente2 = threading.Thread(target=main())
 
-# Inicia los procesos
-#    proceso_cliente1.start()
-#    proceso_cliente2.start()
-
-# Espera a que los procesos terminen
-#    proceso_cliente1.join()
-#    proceso_cliente2.join()

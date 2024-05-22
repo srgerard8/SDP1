@@ -1,3 +1,4 @@
+/*
 syntax = "proto3";
 
 package chat;
@@ -26,4 +27,39 @@ message MessageResponse {
     string sender = 1;
     string receiver = 2;
     string message = 3;
+}
+*/
+syntax = "proto3";
+
+package chat;
+
+service ChatService {
+    rpc RegisterClient(ClientInfo) returns (RegisterResponse) {}
+    rpc GetClients(Empty) returns (ClientList) {}
+    rpc SendMessage(MessageRequest) returns (MessageResponse) {}
+}
+
+message ClientInfo {
+    string username = 1;
+    string address = 2; // IP:Port
+}
+
+message RegisterResponse {
+    string message = 1;
+}
+
+message Empty {}
+
+message ClientList {
+    repeated ClientInfo clients = 1;
+}
+
+message MessageRequest {
+    string sender = 1;
+    string receiver = 2;
+    string message = 3;
+}
+
+message MessageResponse {
+    string message = 1;
 }
