@@ -2,6 +2,7 @@ import grpc
 from concurrent import futures
 import chatservice_pb2
 import chatservice_pb2_grpc
+import pika
 
 class ChatService(chatservice_pb2_grpc.ChatServiceServicer):
     def __init__(self, client):
@@ -96,7 +97,29 @@ class Client:
                 self.send_message(receiver, message)
 
     def opcio2(self):
-        print("2")
+        # Conectarse a RabbitMQ
+        connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+        channel = connection.channel()
+
+        # Declarar una cola
+        channel.queue_declare(queue='prova')
+
+        # Definir una función de callback para manejar los mensajes recibidos
+        def callback(ch, method, properties, body):
+            print("Missatge rebut:", body)
+
+        # Suscribirse a la cola y comenzar a consumir mensajes
+        channel.basic_consume(queue='proves', on_message_callback=callback, auto_ack=True)
+
+        print('Esperando mensajes. Presiona CTRL+C para salir.')
+
+        # Entrar en un bucle de espera para recibir mensajes
+        try:
+            channel.start_consuming()
+        except KeyboardInterrupt:
+            print('Saliendo...')
+            connection.close()
+
 
     def opcio3(self):
         print("3")
