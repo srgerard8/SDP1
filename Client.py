@@ -1,3 +1,5 @@
+import threading
+
 import grpc
 from concurrent import futures
 import chatservice_pb2
@@ -23,6 +25,15 @@ class Client:
         self.server = None
         self.channel = grpc.insecure_channel('localhost:50052')
         self.stub = chatservice_pb2_grpc.ChatServiceStub(self.channel)
+
+        # Conexión a RabbitMQ
+        self.rabbit_connection = pika.BlockingConnection(pika.ConnectionParameters(
+            host='localhost',
+            port=5672,
+            virtual_host='/',
+            credentials=pika.PlainCredentials('guest', 'guest')
+        ))
+        self.rabbit_channel = self.rabbit_connection.channel()
 
     def mostrar_menu(self):
         print("Benvingut al servei de xats, " + self.username)
@@ -97,35 +108,65 @@ class Client:
                 self.send_message(receiver, message)
 
     def opcio2(self):
-        # Conectarse a RabbitMQ
-        connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
-        channel = connection.channel()
 
-        # Declarar una cola
-        channel.queue_declare(queue='prova')
+        sortir = False
+        nom_grup = input("Posa el nom del grup al que vols crear o connectar-te: ")
+        exchange_name = f"exchange_{nom_grup}"
+        self.rabbit_channel.exchange_declare(exchange=exchange_name, exchange_type='fanout')
+        print(f"Connectat al grup {nom_grup}")
 
-        # Definir una función de callback para manejar los mensajes recibidos
+        # Crear una cola temporal para este cliente y enlazarla con el exchange
+        result = self.rabbit_channel.queue_declare(queue='', exclusive=True)
+        queue_name = result.method.queue
+        self.rabbit_channel.queue_bind(exchange=exchange_name, queue=queue_name)
+
         def callback(ch, method, properties, body):
-            print("Missatge rebut:", body)
+            print(f"Missatge rebut del grup {nom_grup}: {body.decode()}")
 
-        # Suscribirse a la cola y comenzar a consumir mensajes
-        channel.basic_consume(queue='proves', on_message_callback=callback, auto_ack=True)
+        self.rabbit_channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
+        print(f"Esperant missatges del grup {nom_grup}. Introdueix sortir per sortir.")
 
-        print('Esperando mensajes. Presiona CTRL+C para salir.')
+        threading.Thread(target=self.rabbit_channel.start_consuming, daemon=True).start()
 
-        # Entrar en un bucle de espera para recibir mensajes
-        try:
-            channel.start_consuming()
-        except KeyboardInterrupt:
-            print('Saliendo...')
-            connection.close()
-
+        while sortir == False:
+            message = input("")
+            if message == "sortir":
+                print("Has sortit del xat")
+                sortir = True
+                self.rabbit_connection.close()
+            else:
+                self.rabbit_channel.basic_publish(exchange=exchange_name, routing_key='', body=message)
 
     def opcio3(self):
         print("3")
 
     def opcio4(self):
-        print("4")
+        sortir = False
+        nom_grup = input("Posa el nom del grup al que vols crear o connectar-te: ")
+        self.rabbit_channel.queue_declare(queue=nom_grup)
+        print(f"Connectat al grup {nom_grup}")
+
+        # Función de callback para manejar los mensajes recibidos
+        def callback(body):
+            print(f"Missatge rebut del grup {nom_grup}: {body.decode()}")
+
+        # Suscribirse a la cola del grupo
+        self.rabbit_channel.basic_consume(queue=nom_grup, on_message_callback=callback, auto_ack=True)
+
+        print(f"Esperant missatges del grup {nom_grup}. Escriu sortir per sortir.")
+
+        # Ejecutar el consumo de mensajes en un hilo separado
+        thread = threading.Thread(target=self.rabbit_channel.start_consuming, daemon=True)
+        thread.start()
+
+        while sortir == False:
+            message = input("")
+            if message == "sortir":
+                print("Has sortit del xat")
+                sortir = True
+                self.rabbit_connection.close()
+            else:
+                self.rabbit_channel.basic_publish(exchange='', routing_key=nom_grup, body=message)
 
 
 if __name__ == "__main__":

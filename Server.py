@@ -34,11 +34,10 @@ def serve():
     server.start()
     print("Servidor en execució al port 50052")
 
-    # Registro automático de la dirección IP y puerto del servidor al lanzarse
     redis_client = redis.StrictRedis(host='localhost', port=6379)
     server_address = 'localhost:50052'
     redis_client.hset('clients', 'server', server_address)
-    print(f"Server address registered: {server_address}")
+    print(f"Adreça del servidor registrada: {server_address}")
 
     server.wait_for_termination()
 
