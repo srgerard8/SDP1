@@ -37,6 +37,8 @@ service ChatService {
     rpc RegisterClient(ClientInfo) returns (RegisterResponse) {}
     rpc GetClients(Empty) returns (ClientList) {}
     rpc SendMessage(MessageRequest) returns (MessageResponse) {}
+
+    rpc DiscoverClients(DiscoveryRequest) returns (DiscoveryResponse);
 }
 
 message ClientInfo {
@@ -49,6 +51,14 @@ message RegisterResponse {
 }
 
 message Empty {}
+
+message DiscoveryRequest {
+  string username = 1;
+}
+
+message DiscoveryResponse {
+  repeated ClientInfo clients = 1;
+}
 
 message ClientList {
     repeated ClientInfo clients = 1;

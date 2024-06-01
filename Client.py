@@ -1,5 +1,5 @@
 import threading
-
+import time
 import grpc
 from concurrent import futures
 import chatservice_pb2
@@ -35,6 +35,7 @@ class Client:
         ))
         self.rabbit_channel = self.rabbit_connection.channel()
 
+
     def mostrar_menu(self):
         print("Benvingut al servei de xats, " + self.username)
         print("1. Connecta al xat")
@@ -47,9 +48,44 @@ class Client:
         address = f'localhost:{self.port}'
         self.stub.RegisterClient(chatservice_pb2.ClientInfo(username=self.username, address=address))
 
+        # Conexión al grupo de eventos
+        self.setup_event_group()
+
+    def setup_event_group(self):
+        exchange_name = 'event_group'
+        self.rabbit_channel.exchange_declare(exchange=exchange_name, exchange_type='fanout')
+
+        # Declarar una cola temporal para este cliente y enlazarla con el exchange
+        result = self.rabbit_channel.queue_declare(queue='', exclusive=True)
+        queue_name = result.method.queue
+        self.rabbit_channel.queue_bind(exchange=exchange_name, queue=queue_name)
+
+        def event_callback(ch, method, properties, body):
+            print("Evento de descubrimiento recibido:", body.decode())
+            # Lógica para manejar eventos de descubrimiento
+
+        self.rabbit_channel.basic_consume(queue=queue_name, on_message_callback=event_callback, auto_ack=True)
+        print("Conectado al grupo de eventos.")
     def get_clients(self):
         response = self.stub.GetClients(chatservice_pb2.Empty())
         return {client.username: client.address for client in response.clients}
+
+    def subscribe_to_event_channel(self):
+        exchange_name = 'event_group'
+        self.rabbit_channel.exchange_declare(exchange=exchange_name, exchange_type='fanout')
+
+        # Declarar una cola temporal para este cliente y enlazarla con el exchange
+        result = self.rabbit_channel.queue_declare(queue='', exclusive=True)
+        queue_name = result.method.queue
+        self.rabbit_channel.queue_bind(exchange=exchange_name, queue=queue_name)
+
+        def event_callback(ch, method, properties, body):
+            print("Evento de descubrimiento recibido:", body.decode())
+            # Lógica para manejar eventos de descubrimiento
+
+        self.rabbit_channel.basic_consume(queue=queue_name, on_message_callback=event_callback, auto_ack=True)
+        print("Conectado al grupo de eventos.")
+        self.rabbit_channel.start_consuming()
 
     def send_message(self, receiver, message):
         clients = self.get_clients()
@@ -107,6 +143,8 @@ class Client:
             else:
                 self.send_message(receiver, message)
 
+
+
     def opcio2(self):
 
         sortir = False
@@ -140,7 +178,7 @@ class Client:
                 sortir = True
                 self.rabbit_channel.stop_consuming()
                 threads.join()
-                self.rabbit_connection.close()
+              #  self.rabbit_connection.close()
             else:
                 self.rabbit_channel.basic_publish(exchange=exchange_name,
                                                   routing_key='',
@@ -151,37 +189,68 @@ class Client:
                 )
 
     def opcio3(self):
-        print("3")
+        # Enviar solicitud de descubrimiento al grupo de eventos
+        exchange_name = 'event_group'
+        self.rabbit_channel.exchange_declare(exchange=exchange_name, exchange_type='fanout')
+        self.rabbit_channel.basic_publish(exchange=exchange_name,
+                                          routing_key='',
+                                          body=f"Solicitud de descubrimiento de {self.username}")
+
+        # Crear una cola temporal para recibir respuestas
+        result = self.rabbit_channel.queue_declare(queue='', exclusive=True)
+        queue_name = result.method.queue
+        self.rabbit_channel.queue_bind(exchange=exchange_name, queue=queue_name)
+
+        # Función de callback para manejar las respuestas recibidas
+        def callback(ch, method, properties, body):
+            sender = properties.headers['sender']
+            print(f"Respuesta de descubrimiento de {sender}: {body.decode()}")
+
+        # Suscribirse a la cola temporal para recibir respuestas
+        self.rabbit_channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
+
+        # Iniciar la escucha de respuestas en un hilo separado
+        threads = threading.Thread(target=self.rabbit_channel.start_consuming, daemon=True)
+        threads.start()
+
+        # Esperar un tiempo para que se reciban las respuestas
+        time.sleep(10)  # Puedes ajustar este tiempo según sea necesario
+
+        # Detener la escucha y limpiar la conexión
+        self.rabbit_channel.stop_consuming()
+        threads.join()
+       # self.rabbit_connection.close()
 
     def opcio4(self):
         sortir = False
-        nom_grup = input("Posa el nom del grup al que vols crear o connectar-te: ")
-        self.rabbit_channel.queue_declare(queue=nom_grup)
-        print(f"Connectat al grup {nom_grup}")
+        queue_name = 'insult_channel'  # Nom de la cua compartida per al canal d'insults
+        self.rabbit_channel.queue_declare(queue=queue_name)
+        print(f"Connectat al canal d'insults {queue_name}")
 
-        # Función de callback para manejar los mensajes recibidos
-        def callback(body):
-            print(f"Missatge rebut del grup {nom_grup}: {body.decode()}")
+        # Funció de callback per manejar els missatges rebuts
+        def callback(ch, method, properties, body):
+            print(f"Missatge rebut del canal d'insults: {body.decode()}")
 
-        # Suscribirse a la cola del grupo
-        self.rabbit_channel.basic_consume(queue=nom_grup, on_message_callback=callback, auto_ack=True)
+        # Subscripció a la cua del grup
+        self.rabbit_channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
 
-        print(f"Esperant missatges del grup {nom_grup}. Escriu sortir per sortir.")
+        print(f"Esperant missatges del canal d'insults. Escriu 'sortir' per sortir.")
 
-        # Ejecutar el consumo de mensajes en un hilo separado
+        # Executar el consum de missatges en un fil separat
         threads = threading.Thread(target=self.rabbit_channel.start_consuming, daemon=True)
         threads.start()
 
         while sortir == False:
             message = input("")
             if message == "sortir":
-                print("Has sortit del xat")
+                print("Has sortit del canal d'insults")
                 sortir = True
                 self.rabbit_channel.stop_consuming()
                 threads.join()
-                self.rabbit_connection.close()
             else:
-                self.rabbit_channel.basic_publish(exchange='', routing_key=nom_grup, body=message)
+                self.rabbit_channel.basic_publish(exchange='',
+                                                  routing_key=queue_name,
+                                                  body=message)
 
 if __name__ == "__main__":
     while True:

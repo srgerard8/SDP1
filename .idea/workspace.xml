@@ -4,10 +4,13 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="078d810e-b8ad-41d1-b877-ee3da9e99c8e" name="Changes" comment="Rabbitmc funciona a mitjes 1a part&#10; Gerard">
+    <list default="true" id="078d810e-b8ad-41d1-b877-ee3da9e99c8e" name="Changes" comment="Chats de grup funcionen, falta fer transistent - persistent, discover, canal d'insults">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Client.py" beforeDir="false" afterPath="$PROJECT_DIR$/Client.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Server.py" beforeDir="false" afterPath="$PROJECT_DIR$/Server.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/chatservice.proto" beforeDir="false" afterPath="$PROJECT_DIR$/chatservice.proto" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/chatservice_pb2.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/chatservice_pb2.pyi" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/chatservice_pb2_grpc.py" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -321,7 +324,15 @@
       <option name="project" value="LOCAL" />
       <updated>1717177467693</updated>
     </task>
-    <option name="localTasksCounter" value="15" />
+    <task id="LOCAL-00015" summary="Chats de grup funcionen, falta fer transistent - persistent, discover, canal d'insults">
+      <option name="closed" value="true" />
+      <created>1717240491867</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1717240491867</updated>
+    </task>
+    <option name="localTasksCounter" value="16" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -349,17 +360,10 @@
     <MESSAGE value="chat directe operatiu amb servidor de noms local Gerard" />
     <MESSAGE value="chat directe operatiu amb servidor de noms redis operatiu. es comença a implementar rabbitmq Gerard" />
     <MESSAGE value="Rabbitmc funciona a mitjes 1a part&#10; Gerard" />
-    <option name="LAST_COMMIT_MESSAGE" value="Rabbitmc funciona a mitjes 1a part&#10; Gerard" />
+    <MESSAGE value="Chats de grup funcionen, falta fer transistent - persistent, discover, canal d'insults" />
+    <option name="LAST_COMMIT_MESSAGE" value="Chats de grup funcionen, falta fer transistent - persistent, discover, canal d'insults" />
   </component>
   <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/Client.py</url>
-          <option name="timeStamp" value="12" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
     <watches-manager>
       <configuration name="PythonConfigurationType">
         <watch expression="client._rpc_event.call_details" />
