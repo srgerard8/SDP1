@@ -113,6 +113,8 @@ class Client:
         nom_grup = input("Posa el nom del grup al que vols crear o connectar-te: ")
         exchange_name = f"exchange_{nom_grup}"
         self.rabbit_channel.exchange_declare(exchange=exchange_name, exchange_type='fanout')
+        address = nom_grup
+        self.stub.RegisterClient(chatservice_pb2.ClientInfo(username=nom_grup, address=address))
         print(f"Connectat al grup {nom_grup}")
 
         # Crear una cola temporal para este cliente y enlazarla con el exchange
@@ -121,21 +123,32 @@ class Client:
         self.rabbit_channel.queue_bind(exchange=exchange_name, queue=queue_name)
 
         def callback(ch, method, properties, body):
-            print(f"Missatge rebut del grup {nom_grup}: {body.decode()}")
+            sender = properties.headers['sender']
+            if (sender != self.username):
+                print(f"Missatge rebut de {sender} al grup {nom_grup}: {body.decode()}")
 
         self.rabbit_channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
         print(f"Esperant missatges del grup {nom_grup}. Introdueix sortir per sortir.")
 
-        threading.Thread(target=self.rabbit_channel.start_consuming, daemon=True).start()
+        threads = (threading.Thread(target=self.rabbit_channel.start_consuming, daemon=True))
+        threads.start()
 
         while sortir == False:
             message = input("")
             if message == "sortir":
                 print("Has sortit del xat")
                 sortir = True
+                self.rabbit_channel.stop_consuming()
+                threads.join()
                 self.rabbit_connection.close()
             else:
-                self.rabbit_channel.basic_publish(exchange=exchange_name, routing_key='', body=message)
+                self.rabbit_channel.basic_publish(exchange=exchange_name,
+                                                  routing_key='',
+                                                  body=message,
+                                                  properties = pika.BasicProperties(
+                                                    headers={'sender': self.username}
+                                                  )
+                )
 
     def opcio3(self):
         print("3")
@@ -156,22 +169,33 @@ class Client:
         print(f"Esperant missatges del grup {nom_grup}. Escriu sortir per sortir.")
 
         # Ejecutar el consumo de mensajes en un hilo separado
-        thread = threading.Thread(target=self.rabbit_channel.start_consuming, daemon=True)
-        thread.start()
+        threads = threading.Thread(target=self.rabbit_channel.start_consuming, daemon=True)
+        threads.start()
 
         while sortir == False:
             message = input("")
             if message == "sortir":
                 print("Has sortit del xat")
                 sortir = True
+                self.rabbit_channel.stop_consuming()
+                threads.join()
                 self.rabbit_connection.close()
             else:
                 self.rabbit_channel.basic_publish(exchange='', routing_key=nom_grup, body=message)
 
-
 if __name__ == "__main__":
-    username = input("Introdueix el teu nom: ")
-    port = input("Introdueix el port en que vols executar aquest client: ")
-    client = Client(username, port)
-    client.start()
+    while True:
+        username = input("Introdueix el teu nom: ")
+        port = input("Introdueix el port en que vols executar aquest client: ")
 
+        client = Client(username, port)
+
+        # obtenim tots els clients
+        all_clients = client.get_clients()
+
+        # Verifiquem si exixteix el nom d'usuari
+        if username in all_clients:
+            print("Aquest nom ja està en ús. Elegeix un altre nom d'usuari")
+        else:
+            break
+    client.start()

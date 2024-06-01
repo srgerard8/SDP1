@@ -11,7 +11,12 @@ class ChatService(chatservice_pb2_grpc.ChatServiceServicer):
     def RegisterClient(self, request, context):
         self.redis_client.hset('clients', request.username, request.address)
         print(f"Client registrat: {request.username} a {request.address}")
-        return chatservice_pb2.RegisterResponse(message="Registre exitós")
+        return chatservice_pb2.RegisterResponse(message="Registre d'usaris exitós")
+
+    def RegisterGroup(self, request, context):
+        self.redis_client.hset('grups', request.username, request.address)
+        print(f"Client registrat: {request.username} a {request.address}")
+        return chatservice_pb2.RegisterResponse(message="Registre de grup exitós")
 
     def GetClients(self, request, context):
         client_list = []
@@ -35,6 +40,8 @@ def serve():
     print("Servidor en execució al port 50052")
 
     redis_client = redis.StrictRedis(host='localhost', port=6379)
+    #Es fa un delete de la taula de hash per borrar tota la execució anterior per a que no hi hagi conflictes
+    redis_client.delete('clients')
     server_address = 'localhost:50052'
     redis_client.hset('clients', 'server', server_address)
     print(f"Adreça del servidor registrada: {server_address}")
