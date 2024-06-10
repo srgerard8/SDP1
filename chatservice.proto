@@ -1,75 +1,45 @@
-/*
 syntax = "proto3";
 
 package chat;
 
+//ChatService on posarem els serveis del gRPC
 service ChatService {
-    rpc SendMessage(MessageRequest) returns (MessageResponse) {}
-    rpc ReceiveMessage(MessageRequest) returns (stream MessageResponse) {}
-    rpc Connect(ConnectRequest) returns (ConnectResponse) {}
-}
-
-message ConnectRequest {
-    string username = 1;
-}
-
-message ConnectResponse {
-    string message = 1;
-}
-
-message MessageRequest {
-    string sender = 1;
-    string receiver = 2;
-    string message = 3;
-}
-
-message MessageResponse {
-    string sender = 1;
-    string receiver = 2;
-    string message = 3;
-}
-*/
-syntax = "proto3";
-
-package chat;
-
-service ChatService {
+    // RegisterClient es el metode que s'encarrega de registrar un client al servidor de noms
     rpc RegisterClient(ClientInfo) returns (RegisterResponse) {}
+    // GetClients es el metode que s'encarrega de retornar la llista de clients registrats al servidor de noms
     rpc GetClients(Empty) returns (ClientList) {}
+    // SendMessage es el metode que s'encarrega d'enviar un missatge d'un client a un altre
     rpc SendMessage(MessageRequest) returns (MessageResponse) {}
-
-    rpc DiscoverClients(DiscoveryRequest) returns (DiscoveryResponse);
 }
 
+//Credencials del usuari nom i direcció amb port
 message ClientInfo {
     string username = 1;
     string address = 2; // IP:Port
 }
 
+//Resposta del servidor de noms (un missatge de verificació)
 message RegisterResponse {
     string message = 1;
 }
 
 message Empty {}
 
-message DiscoveryRequest {
-  string username = 1;
-}
-
-message DiscoveryResponse {
-  repeated ClientInfo clients = 1;
-}
-
+//Llista de clients registrats
 message ClientList {
     repeated ClientInfo clients = 1;
 }
 
+//Missatge que es enviarà (emissor, receptor i cos del missatge)
 message MessageRequest {
     string sender = 1;
     string receiver = 2;
     string message = 3;
 }
 
+//Resposta del missatge (el cos del missatge)
 message MessageResponse {
     string message = 1;
 }
+
+
