@@ -1,22 +1,18 @@
 import threading
-import time
 import grpc
 from concurrent import futures
 import chatservice_pb2
 import chatservice_pb2_grpc
 import pika
 
-# Classe que implementa el servei de xat i que conté el métode per enviar missatges privats entre clients
 class ChatService(chatservice_pb2_grpc.ChatServiceServicer):
     def __init__(self, client):
         self.client = client
 
-    # Métode del gRPC per enviar missatges entre clients
+    # Mètode de gRPC per a poder enviar missatges
     def SendMessage(self, request, context):
-        # Agafem el nom del client que envia el missatge i el cos del missatge
         sender = request.sender
         message = request.message
-        # Mostrem el missatge per consola
         print(f"Missatge rebut de {sender}: {message}")
         return chatservice_pb2.MessageResponse(message="Missatge enviat correctament")
 
@@ -28,9 +24,12 @@ class Client:
         self.port = port
         self.server = None
         self.channel = grpc.insecure_channel('localhost:50052')
+        self.connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+        self.rabbit_channel = self.connection.channel()
         self.stub = chatservice_pb2_grpc.ChatServiceStub(self.channel)
+        self.setup_discovery_listener()
 
-        # Fem connexió a RabbitMQ amb el port 5672
+        # Connexió a RabbitMQ
         self.rabbit_connection = pika.BlockingConnection(pika.ConnectionParameters(
             host='localhost',
             port=5672,
@@ -39,115 +38,160 @@ class Client:
         ))
         self.rabbit_channel = self.rabbit_connection.channel()
 
-    # Métode per mostrar el menú de l'aplicació als clients
+    # Mètode per mostrar el menú
     def mostrar_menu(self):
         print("Benvingut al servei de xats, " + self.username)
-        print("1. Connecta al xat privat")
-        print("2. Connecta al xat de grup")
-        print("3. Subscriure's al xat de grup")
-        print("4. Descobreix xats")
-        print("5. Accedeix al canal d'insults")
+        print("1. Connectar-se a un xat privat")
+        print("2. Connectar-se a un xat grupal")
+        print("3. Subscriure's a un xat de grup")
+        print("4. Descobrir usuaris")
+        print("5. Connectar-se al canal d'insults")
         print("6. Sortir")
 
-    # Métode per registrar el client al servidor de noms
+    # Mètode que crida a la funció del server.py per registrar els clients amb les seves credencials
     def register(self):
-        # Es guarda la adreça del client ip:port
         address = f'localhost:{self.port}'
-        # és crida al métode de gRPC per registrar al servidor de noms
         self.stub.RegisterClient(chatservice_pb2.ClientInfo(username=self.username, address=address))
 
-        # Connexió al grup d'esdeveniments per al discover
+        # Connexió al grup d'esdeveniments per al discovery
         self.setup_event_group()
 
-    # Métode per configurar el grup d'esdeveniments (discover)
+    # Mètode per configurar el grup d'esdeveniments
     def setup_event_group(self):
+        # El nom de l'exchange és 'event_group'
         exchange_name = 'event_group'
-        # Declarem un exchange per al discover
         self.rabbit_channel.exchange_declare(exchange=exchange_name, exchange_type='fanout')
 
-        # Creem una cua temporal per a aquest client i la vinculem amb l'exchange
+        # Declararem una cua temporal per a aquest client i enllaçar-la amb l'exchange
         result = self.rabbit_channel.queue_declare(queue='', exclusive=True)
         queue_name = result.method.queue
         self.rabbit_channel.queue_bind(exchange=exchange_name, queue=queue_name)
 
-        # Funció de callback per rebre els discovers
+        # Funció de callback per a poder rebre els missatges
         def event_callback(ch, method, properties, body):
-            print("Discover rebut:", body.decode())
+            print("Esdeveniment de discover rebut:", body.decode())
 
-        # Consumim els missatges del grup de discover
+        # Consumir els missatges de l'exchange
         self.rabbit_channel.basic_consume(queue=queue_name, on_message_callback=event_callback, auto_ack=True)
-        print("Conectado al grupo de eventos.")
+        print("Connectat al grup d'esdeveniments.")
 
-    # Métode que utilitza una funció de gRPC per obtenir la llista de clients registrats
+    # Mètode per obtenir una llista amb tots els clients
     def get_clients(self):
+        # S'utilitza el mètode GetClients de gRPC
         response = self.stub.GetClients(chatservice_pb2.Empty())
         return {client.username: client.address for client in response.clients}
 
-    # Métode per enviar missatges privats entre clients
+    # Mètode per enviar missatges a un client
     def send_message(self, receiver, message):
-        # Obtenim la llista de clients
+        # Obtenim una llista amb tots els clients
         clients = self.get_clients()
-        # Si el receptor està a la llista de clients, enviem el missatge
+        # Comprovem si el client al que volem enviar el missatge està a la llista
         if receiver in clients:
-            # Agafem la adreça i port del receptor per saber a on hem de dirigir el missatge
+            # Si ho està obtenim la seva adreça i creem un canal gRPC
             receiver_address = clients[receiver]
             channel = grpc.insecure_channel(receiver_address)
-            # Creem un stub per enviar el missatge
+            # També creem un stub per a poder cridar a SendMessage
             stub = chatservice_pb2_grpc.ChatServiceStub(channel)
-            # Enviam el missatge amb el métode de gRPC
+            # Enviem el missatge cridant al mètode de gRPC
             response = stub.SendMessage(chatservice_pb2.MessageRequest(sender=self.username, receiver=receiver, message=message))
             print(f"{response.message}")
         else:
-            # Si no trobem el receptor a la llista de clients, mostrem un missatge d'error
+            # Si el client no està a la llista mostrem un missatge d'error
             print(f"Client {receiver} no trobat")
 
-    # Métode per iniciar el servidor intern de cada client per a que es puguin rebre els missatges
+    # Mètode per a crear el servidor intern dins del client per a poder rebre els missatges
     def serve(self):
+        # Creem el servidor
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
         chatservice_pb2_grpc.add_ChatServiceServicer_to_server(ChatService(self), server)
-        # El port del servidor serà el que ha introduït l'usuari al començament
+        # L'assignem al port que ha escollit l'usuari al començament
         server.add_insecure_port(f'[::]:{self.port}')
-        # S'inicia el servidor
+        # Iniciem el servidor al port escollit
         server.start()
         self.server = server
         print(f"Client servidor gRPC en execució al port {self.port}")
 
-    # Métode per mostrar el menú i gestionar les opcions escollides per l'usuari
+    # Métode per a consumir missatges
+    def _consume_messages(self, channel):
+        # Comprovem si el canal està obert
+        try:
+            if channel.is_open:
+                # Si ho està comencem a consumir missatges
+                channel.start_consuming()
+        except Exception as e:
+            # sino llençem excepció
+            print(f"Error durant el consum de missatges: {e}")
+
+    # Mètode per a configurar el listener del discover
+    def setup_discovery_listener(self):
+        # Crear l'exchange de descobriment
+        discovery_exchange = 'discovery_exchange'
+        self.rabbit_channel.exchange_declare(exchange=discovery_exchange, exchange_type='fanout')
+
+        # Crear una cua temporal per a aquest client i enllaçar-la amb l'exchange del discover
+        result = self.rabbit_channel.queue_declare(queue='', exclusive=True)
+        queue_name = result.method.queue
+        self.rabbit_channel.queue_bind(exchange=discovery_exchange, queue=queue_name)
+
+        # Funció per a respondre el discover
+        def respond_to_discovery(ch, method, properties, body):
+            # Si el missatge és una sol·licitud de discover, respon amb el nom d'usuari i el port
+            if body.decode() == 'DISCOVERY_REQUEST':
+                # Es crea la resposta amb el nom d'usuari i el port
+                response = f"{self.username},{self.port}"
+                self.rabbit_channel.basic_publish(exchange=discovery_exchange,
+                                                  routing_key='',
+                                                  body=response,
+                                                  properties=pika.BasicProperties(
+                                                      headers={'sender': self.username},
+                                                      delivery_mode=2  # Fa que el missatge sigui persistent
+                                                  ))
+
+        # Consumir els missatges de l'exchange de discover
+        self.rabbit_channel.basic_consume(queue=queue_name, on_message_callback=respond_to_discovery, auto_ack=True)
+        threading.Thread(target=self._consume_messages, args=(self.rabbit_channel,), daemon=True).start()
+
+    # Mètode per a iniciar el client
     def start(self):
-        # Cridem a register per registrar el client al servidor de noms i demanar les credencials
+        # Cridem a register per a poder obtenir les credencials
         self.register()
-        # Cridem a serve per iniciar el servidor intern de cada client
+        # Cridem a serve per a poder crear el servidor intern i poder rebre els missatges
         self.serve()
         while True:
             # Mostrem el menú
             self.mostrar_menu()
-            opcio = input("Elegeix una opció: ")
+            opcio = input("Escull una opció: ")
 
-            # Segons l'opció escollida, cridem a la funció corresponent
+            # Comprovem quina opció ha escollit l'usuari
             if opcio == "1":
+                print("Has escollit connectar-te a un xat privat")
                 self.opcio1()
             elif opcio == "2":
+                print("Has escollit connectar-te a un xat grupal")
                 self.opcio2()
             elif opcio == "3":
+                print("Has escollit subscriure't a un xat de grup")
                 self.opcio3()
             elif opcio == "4":
+                print("Has escollit descobrir usuaris")
                 self.opcio4()
             elif opcio == "5":
                 self.opcio5()
+                print("Has escollit accedir al canal d'insults")
             elif opcio == "6":
                 print("Sortint...")
                 break
             else:
-                print("Opció no valida. Si us plau, elegeix una opció")
+                print("Opció no vàlida. Si us plau, escull una opció")
 
-    # Opció 1: connexió al xat privat
+    # Opció 1: Connectar-se a un xat privat
     def opcio1(self):
-        # Variable per quan l'usuari vulgui sortir del xat
+        # Variables per a sortir del bucle
         sortir = False
-        # Demanem el nom del destinatari amb qui es vol connectar el xat
-        receiver = input("Introdueix el destinatari amb qui et vols connectar el xat: ")
-        print("A continuació, et connectaràs el servei de xat privat. Si vols sortir, introdueix 'sortir'")
-        # L'usuari podra introduir missatges fins que vulgui sortir
+        # Demanem el destinatari a qui es vol connectar
+        receiver = input("Introdueix el destinatari amb qui et vols connectar al xat: ")
+        print("A continuació, et connectaràs al servei de xat privat. Si vols sortir, introdueix 'sortir'")
+        # Si l'usuari vol sortir, introduirà 'sortir'
         while sortir == False:
             message = input("")
             if message == "sortir":
@@ -156,199 +200,190 @@ class Client:
             else:
                 self.send_message(receiver, message)
 
-    # Opció 2: connexió al xat de grup
+    # Opció 2: Connectar-se a un xat grupal
     def opcio2(self):
         sortir = False
-        # Demanem a l'usuari que posi el nom del grup al que vol connectar-se
+        # Demanar el nom del grup al que es vol connectar
         nom_grup = input("Posa el nom del grup al que vols crear o connectar-te: ")
-        # Connectem amb aquest exchange en el cas de que ja existeixi i sino es crearà
+        # Crear un exchange amb el nom del grup
         exchange_name = f"exchange_{nom_grup}"
-        # Cada exchange serà un grup diferent
+
+        # Assegurar-se que el canal estigui obert abans de continuar
+        if not self.rabbit_channel.is_open:
+            self.rabbit_channel = self.connection.channel()
+
+        # Crear un exchange amb el nom del grup
         self.rabbit_channel.exchange_declare(exchange=exchange_name, exchange_type='fanout')
+        # Guardar el nom del grup com a adreça
         address = nom_grup
-        # Registrem el grup i el seu nom al servidor de noms
+        # Registrarem el grup al servidor de noms
         self.stub.RegisterClient(chatservice_pb2.ClientInfo(username=nom_grup, address=address))
         print(f"Connectat al grup {nom_grup}")
 
-        # Creem la cua temporal per a aquest client i la vinculem amb l'exchange
+        # Crear una cua temporal per a aquest client i enllaçar-la amb l'exchange
         result = self.rabbit_channel.queue_declare(queue='', exclusive=True)
         queue_name = result.method.queue
         self.rabbit_channel.queue_bind(exchange=exchange_name, queue=queue_name)
 
-        # Cua adicional per desar els missatges
-        self.rabbit_channel.queue_declare(queue=f'messages_queue_{nom_grup}')
+
+        messages_queue_name = f'messages_queue_{self.username}_{nom_grup}'
+        self.rabbit_channel.queue_declare(queue=messages_queue_name, durable=True)
+
+        # Llegir i mostrar missatges emmagatzemats a la cua duradora, i eliminar-los després
+        while True:
+            method_frame, header_frame, body = self.rabbit_channel.basic_get(messages_queue_name, auto_ack=False)
+            if method_frame:
+                sender = header_frame.headers['sender']
+                message = body.decode()
+                if sender != self.username:
+                    print(f"Missatge antic de {sender}: {message}")
+                self.rabbit_channel.basic_ack(method_frame.delivery_tag)  # Confirmar recepció del missatge
+            else:
+                break
+
+        # Desvincular la cua persistent mentre l'usuari està connectat
+        self.rabbit_channel.queue_unbind(exchange=exchange_name, queue=messages_queue_name)
 
         # Funció de callback per rebre els missatges
         def callback(ch, method, properties, body):
-            # La funció rebrà l'emissor del missatge i el cos del missatge i el mostrarà per consola
             sender = properties.headers['sender']
             message = body.decode()
             if sender != self.username:
-                print(f"Missatge rebut de {sender} al grup {nom_grup}: {message}")
+                print(f"Missatge rebut de {sender}: {message}")
 
-        # Consumim els missatges de la cua principal per a poder rebrer els missatges
         self.rabbit_channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
         print(f"Esperant missatges del grup {nom_grup}. Introdueix sortir per sortir.")
 
-        # Executem el consum de missatges en un fil separat
-        threads = threading.Thread(target=self.rabbit_channel.start_consuming, daemon=True)
-        threads.start()
+        self.is_connected = True  # L'usuari està connectat
+        thread = threading.Thread(target=self._consume_messages, args=(self.rabbit_channel,), daemon=True)
+        thread.start()
 
-        # L'usuari podrà introduir missatges fins que vulgui sortir
+        # Bucle per enviar missatges al grup
         while not sortir:
             message = input("")
             if message == "sortir":
                 print("Has sortit del xat")
                 sortir = True
-                self.rabbit_channel.stop_consuming()
-                threads.join()
+                self.is_connected = False  # L'usuari es desconnecta
+                try:
+                    self.rabbit_channel.stop_consuming()
+                except Exception as e:
+                    print(f"Error al detindre el consum: {e}")
+                thread.join()
+
+                # Tornar a vincular la cua persistent quan l'usuari es desconnecta
+                self.rabbit_channel.queue_bind(exchange=exchange_name, queue=messages_queue_name)
             else:
-                # Enviar el mensaje al exchange
+                # Enviar el missatge a l'exchange
                 self.rabbit_channel.basic_publish(exchange=exchange_name,
                                                   routing_key='',
                                                   body=message,
                                                   properties=pika.BasicProperties(
-                                                      headers={'sender': self.username}
-                                                  ))
-                # Guardar el mensaje en la cola de mensajes
-                self.rabbit_channel.basic_publish(exchange='',
-                                                  routing_key=f'messages_queue_{nom_grup}',
-                                                  body=message,
-                                                  properties=pika.BasicProperties(
-                                                      headers={'sender': self.username}
+                                                      headers={'sender': self.username},
+                                                      delivery_mode=2  # Fa que el missatge sigui persistent
                                                   ))
 
-    # Opció 3: subscriure's al xat de grup
+
+    # Opció 3: Subscriure's a un xat de grup
     def opcio3(self):
-        sortir = False
-        # Demanem a l'usuari que posi el nom del grup al que vol connectar-se
-        nom_grup = input("Escriu el nom del grup al que et vols subscriure (o 'sortir' per sortir): ")
-        # Si l'usuari vol sortir, sortim de la funció
-        if nom_grup.lower() == 'sortir':
-            print("Has sortit de l'opció 5.")
-            return
-
-        # Delcarem l'exchange per al nom del grup
+        nom_grup = input("Posa el nom del grup al que vols subscriure't: ")
         exchange_name = f"exchange_{nom_grup}"
         self.rabbit_channel.exchange_declare(exchange=exchange_name, exchange_type='fanout')
-        address = nom_grup
-        # Registrem el grup al servidor de noms
-        self.stub.RegisterClient(chatservice_pb2.ClientInfo(username=nom_grup, address=address))
-        print(f"Conectat al grup {nom_grup}")
 
-        # Creem una cua temporal per a aquest client i la vinculem amb l'exchange
-        result = self.rabbit_channel.queue_declare(queue='', exclusive=True, auto_delete=False)
-        queue_name = result.method.queue
-        self.rabbit_channel.queue_bind(exchange=exchange_name, queue=queue_name)
+        # Crear una cua temporal per a aquest client i enllaçar-la amb l'exchange
+        messages_queue_name = f'messages_queue_{self.username}_{nom_grup}'
+        self.rabbit_channel.queue_declare(queue=messages_queue_name, durable=True)
+        # Llegir i mostrar missatges emmagatzemats a la cua duradora, i eliminar-los després
+        self.rabbit_channel.queue_bind(exchange=exchange_name, queue=messages_queue_name)
 
-        # Cua adicional per a poder emmagatzemar els missatges
-        messages_queue_name = f'messages_queue_{nom_grup}'
-        self.rabbit_channel.queue_declare(queue=messages_queue_name, auto_delete=False)
+        print(f"Subscrit al grup {nom_grup}. Els missatges es guardaran mentre no estiguis connectat.")
 
-        # Comptador de missatges per a poder saber quants missatges hi ha i així poder imprimir només els parells
-        message_counter = 0
 
-        # Funció de callback per a poder rebre els missatges emmagatzemats a la cua
-        def callback(ch, method, properties, body):
-            # Només imprimirem els missatges parells ja que estàn duplicats
-            nonlocal message_counter
-            sender = properties.headers['sender']
-            message = body.decode()
-            if sender != self.username:
-                if message_counter % 2 == 0:
-                    print(f"Missatge rebut de {sender} al grup {nom_grup}: {message}")
-                message_counter += 1
-
-        # Consumir missatges de la cua principal
-        self.rabbit_channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
-
-        # Consumir missatges de la cua de missatges emmagatzemats
-        self.rabbit_channel.basic_consume(queue=messages_queue_name, on_message_callback=callback, auto_ack=True)
-
-        print(f"Esperant missatges del grup {nom_grup}. Introdueix 'sortir' para sortir.")
-
-        # Executar el consum de missatges en un fil separat
-        threads = threading.Thread(target=self.rabbit_channel.start_consuming, daemon=True)
-        threads.start()
-
-        # L'usuari podrà introduir missatges fins que vulgui sortir
-        while not sortir:
-            message = input("")
-            if message == "sortir":
-                print("Has sortit del xat.")
-                sortir = True
-                self.rabbit_channel.stop_consuming()
-                threads.join()
-            else:
-                # Enviar el mensaje al exchange
-                self.rabbit_channel.basic_publish(exchange=exchange_name,
-                                                  routing_key='',
-                                                  body=message,
-                                                  properties=pika.BasicProperties(
-                                                      headers={'sender': self.username}
-                                                  ))
-                # Guardar el mensaje en la cola de mensajes
-                self.rabbit_channel.basic_publish(exchange='',
-                                                  routing_key=messages_queue_name,
-                                                  body=message,
-                                                  properties=pika.BasicProperties(
-                                                      headers={'sender': self.username}
-                                                  ))
-
-    # Opció 4: descobreix xats
     def opcio4(self):
-        # Enviar la solicitut de discover al grup creat anteriorment d'esdeveniments
-        exchange_name = 'event_group'
-        # Declarem un exchange per al discover
-        self.rabbit_channel.exchange_declare(exchange=exchange_name, exchange_type='fanout')
-        self.rabbit_channel.basic_publish(exchange=exchange_name,
-                                          routing_key='',
-                                          body=f"Solicitut de discover de {self.username}")
+        discovery_exchange = 'discovery_exchange'
+        self.rabbit_channel.exchange_declare(exchange=discovery_exchange, exchange_type='fanout')
 
-        # Creem una cua temporal per a poder rebre respostes i l'enllaçem amb l'exchange
+        # Crear una cua temporal per a aquest client i enllaçar-la amb l'exchange de descobriment
         result = self.rabbit_channel.queue_declare(queue='', exclusive=True)
         queue_name = result.method.queue
-        self.rabbit_channel.queue_bind(exchange=exchange_name, queue=queue_name)
+        self.rabbit_channel.queue_bind(exchange=discovery_exchange, queue=queue_name)
 
-        # Funció de callback per a poder rebre els missatges
-        def callback(ch, method, properties, body):
-            sender = properties.headers['sender']
-            print(f"Resposta de discover de {sender}: {body.decode()}")
+        # Funció de callback per processar els missatges de discover
+        def discovery_callback(ch, method, properties, body):
+            # Processar el missatge de discover rebut
+            try:
+                username, port = body.decode().split(',')
+                if username != self.username:  # Omet el propi nom d'usuari
+                    print(f"Usuari actiu: {username}, Port: {port}")
+            except ValueError:
+                print(f"Error al processar el missatge de descobriment: {body.decode()}")
 
-        # Ens subscribim a la cua temporal per a poder rebre les respostes
-        self.rabbit_channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
+        self.rabbit_channel.basic_consume(queue=queue_name, on_message_callback=discovery_callback, auto_ack=True)
 
-        # Iniciem la escolta de respostes en un fil separat
-        threads = threading.Thread(target=self.rabbit_channel.start_consuming, daemon=True)
-        threads.start()
+        # Publicar un esdeveniment de discover
+        self.rabbit_channel.basic_publish(exchange=discovery_exchange,
+                                          routing_key='',
+                                          body='DISCOVERY_REQUEST',
+                                          properties=pika.BasicProperties(
+                                              headers={'sender': self.username},
+                                              delivery_mode=2  # Fa que el missatge sigui persistent
+                                          ))
 
-        # Esperem un temps de 10 segons per a poder rebre les respostes
-        time.sleep(10)
+        print("Esperant respostes dels usuaris actius...")
 
-        # Parem la escolta de respostes i tanquem el fil
-        self.rabbit_channel.stop_consuming()
-        threads.join()
+        # Esperar un temps per rebre respostes
+        try:
+            thread = threading.Thread(target=self._consume_messages, args=(self.rabbit_channel,), daemon=True)
+            thread.start()
+            thread.join(timeout=5)  # Esperar 5 segons per rebre respostes
+        except Exception as e:
+            print(f"Error durant el consum de missatges: {e}")
+        finally:
+            if self.rabbit_channel.is_open:
+                try:
+                    self.rabbit_channel.stop_consuming()
+                except Exception as e:
+                    print(f"Error al detindre el consum: {e}")
 
+    # Opció 5: Connectar-se al canal d'insults
     def opcio5(self):
         sortir = False
         queue_name = 'insult_channel'  # Nom de la cua compartida per al canal d'insults
-        self.rabbit_channel.queue_declare(queue=queue_name)
+
+        # Funció per reconnectar-se al canal d'insults
+        def reconnect():
+            # Intentem reconnectar al canal d'insults
+            try:
+                self.rabbit_connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+                self.rabbit_channel = self.rabbit_connection.channel()
+                self.rabbit_channel.queue_declare(queue=queue_name)
+            except Exception as e:
+                print(f"Error al reconnectar: {e}")
+
+        # Inicialment intentem connectar
+        reconnect()
         print(f"Connectat al canal d'insults {queue_name}")
 
         # Funció de callback per manejar els missatges rebuts
         def callback(ch, method, properties, body):
-            print(f"Missatge rebut del canal d'insults: {body.decode()}")
+            print(f"Missatge: {body.decode()}")
 
-        # Subscripció a la cua del grup
-        self.rabbit_channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
+        # Funció per a consumir missatges del canal d'insults
+        def start_consuming():
+            try:
+                self.rabbit_channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
+                self.rabbit_channel.start_consuming()
+            except pika.exceptions.StreamLostError as e:
+                print(f"Connexió perduda: {e}")
+                reconnect()
 
         print(f"Esperant missatges del canal d'insults. Escriu 'sortir' per sortir.")
 
         # Executar el consum de missatges en un fil separat
-        threads = threading.Thread(target=self.rabbit_channel.start_consuming, daemon=True)
+        threads = threading.Thread(target=start_consuming, daemon=True)
         threads.start()
 
-        # L'usuari podrà introduir missatges fins que vulgui sortir
+        # Bucle per enviar missatges al canal d'insults
         while sortir == False:
             message = input("")
             if message == "sortir":
@@ -357,13 +392,16 @@ class Client:
                 self.rabbit_channel.stop_consuming()
                 threads.join()
             else:
-                self.rabbit_channel.basic_publish(exchange='',
-                                                  routing_key=queue_name,
-                                                  body=message)
+                try:
+                    self.rabbit_channel.basic_publish(exchange='',
+                                                      routing_key=queue_name,
+                                                      body=message)
+                except pika.exceptions.StreamLostError as e:
+                    print(f"Connexió perduda durant l'enviament del missatge: {e}")
+                    reconnect()
 
 
 if __name__ == "__main__":
-    # Demanem credencials del usuari nom i port
     while True:
         username = input("Introdueix el teu nom: ")
         port = input("Introdueix el port en que vols executar aquest client: ")
@@ -375,15 +413,7 @@ if __name__ == "__main__":
 
         # Verifiquem si exixteix el nom d'usuari
         if username in all_clients:
-            print("Aquest nom ja està en ús. Elegeix un altre nom d'usuari")
+            print("Aquest nom ja està en ús. Escull un altre nom d'usuari")
         else:
-            # Verifiquem si el port es correcte i no està en ús
-            portisnumeric = port.isnumeric()
-            if portisnumeric:
-                if f'localhost:{port}' in all_clients.values():
-                    print("Aquest port ja està en ús. Elegeix un altre port")
-                else:
-                    break
-            else:
-                print("El port ha de ser un nombre enter no negatiu")
+            break
     client.start()
