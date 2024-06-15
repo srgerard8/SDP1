@@ -4,10 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="078d810e-b8ad-41d1-b877-ee3da9e99c8e" name="Changes" comment="commit final&#10;Gerard">
+    <list default="true" id="078d810e-b8ad-41d1-b877-ee3da9e99c8e" name="Changes" comment="commit final definitiu&#10;Gerard">
+      <change afterPath="$PROJECT_DIR$/start-client.bat" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/start-server.bat" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Client.py" beforeDir="false" afterPath="$PROJECT_DIR$/Client.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Readme.md" beforeDir="false" afterPath="$PROJECT_DIR$/Readme.md" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -59,7 +59,7 @@
     &quot;Python.hola.executor&quot;: &quot;Run&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/gerar/PycharmProjects/SDP1&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/gerar/PycharmProjects/SDP2&quot;,
     &quot;settings.editor.selected.configurable&quot;: &quot;tools.buf&quot;
   }
 }</component>
@@ -345,7 +345,15 @@
       <option name="project" value="LOCAL" />
       <updated>1718022324648</updated>
     </task>
-    <option name="localTasksCounter" value="18" />
+    <task id="LOCAL-00018" summary="commit final definitiu&#10;Gerard">
+      <option name="closed" value="true" />
+      <created>1718033485288</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1718033485288</updated>
+    </task>
+    <option name="localTasksCounter" value="19" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -376,7 +384,8 @@
     <MESSAGE value="Chats de grup funcionen, falta fer transistent - persistent, discover, canal d'insults" />
     <MESSAGE value="Sol·lucionar molts errors, canals d'insult i discover només funciona en opció 2 i 4. s'ha provat a posar els fils al init i el discover funciona pero en el grup salta un error.&#10;Gerard" />
     <MESSAGE value="commit final&#10;Gerard" />
-    <option name="LAST_COMMIT_MESSAGE" value="commit final&#10;Gerard" />
+    <MESSAGE value="commit final definitiu&#10;Gerard" />
+    <option name="LAST_COMMIT_MESSAGE" value="commit final definitiu&#10;Gerard" />
   </component>
   <component name="XDebuggerManager">
     <watches-manager>
