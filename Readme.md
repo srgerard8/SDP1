@@ -17,10 +17,10 @@ IMPORTANT: Dins d'aquests dos fitxers .bat, s'haurà d'introduïr el camí absol
 Un cop tenim el servidor i els clients oberts, podrem començar a utilitzar el nostre sistema de xat. En el servidor no haurem de tocar res ja que estarà tot inicialitzat, només verificarem que no hi hagi cap inconvenient. Els usuaris podran connectar-se al servidor introduint el seu nom d'usuari i el seu port. Un cop introduïdes les dades el servidor connectarà amb el redis per desar les seves credencials i a continuació, a l'usuari se li apareixerà un menú amb les següents opcions:
 
 1. Connectar-se al xat privat
-2. Subscriure's al xat de grup
-3. Descobreix xats
-4. Accedeix al canal d'insults
-5. opció 5
+2. Connectar-se al xat de grup
+3. Subscriure's al xat de grup
+4. Descobreix xats
+5. Accedeix al canal d'insults
 6. Sortir
 
 Si volguessim xatejar amb un client en privat, haurem de seleccionar l'opció 1. A continuació, ens demanarà el nom de l'usuari amb qui volem xatejar i ens connectarà amb ell. Un cop finalitzem la conversa, escriurem la paraula `sortir` per tornar al menú principal i elegir una altra opció.
